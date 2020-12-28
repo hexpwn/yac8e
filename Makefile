@@ -2,7 +2,7 @@ LDFLAGS=-lncurses
 FLAGS=-g
 
 all: 
-	gcc src/main.c -o bin/main ${LDFLAGS} ${FLAGS}
+	gcc src/yac8e.c -o bin/yac8e ${LDFLAGS} ${FLAGS}
 
 test:
 	gcc src/test.c -o bin/test ${LDFLAGS} ${FLAGS}
