@@ -20,8 +20,8 @@ int main(int argc, char argv[])
 
 
 	/* Window init */
-	height 	= 32;
-	width 	= 64;
+	height 	= 34;
+	width 	= 66;
 	starty = (LINES - height) / 2;
 	startx = (COLS - width) / 2;
 	
