@@ -8,7 +8,7 @@ void destroy_win(WINDOW *local_win);
 
 int main(int argc, char **argv)
 {
-	/* Check if ROM was passed */
+	/* Check if ROM was passed and flags */
 	char *filename;
 	int DEBUG;
 	if(argc < 2 || argc > 3){
@@ -37,7 +37,8 @@ int main(int argc, char **argv)
 	WINDOW **windows = initGraphics(DEBUG);
 
 	/* Load ROM */
-	printf(filename);
+	FILE *rom = fopen(filename, "rb");
+	fclose(rom);
 
 	/* Run game loop */
 	int i = 0;
@@ -62,6 +63,7 @@ int main(int argc, char **argv)
 	/* Destroy graphic interface */
 	free(windows);
 	endwin();
+
 	return 0;
 }
 
