@@ -48,11 +48,14 @@ int main(int argc, char **argv)
 
 	// Load ROM
 	FILE *rom = fopen(filename, "rb");
+	assert(rom != NULL);
+
 	fseek(rom, 0, SEEK_END);
 	long lsize = 0;
 	lsize = ftell(rom);
 	rewind(rom);
 
+	// Must load at offset 0x200 of memory
 	size_t n = fread(&chip8->memory[512], 1, lsize, rom);
 	printf("Read %ld bytes from %s\n", n, filename);
 	fclose(rom);
