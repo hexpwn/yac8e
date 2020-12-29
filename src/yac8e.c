@@ -8,7 +8,7 @@ WINDOW **initGraphics(int debug);
 struct CPU *new_cpu();
 void destroy_win(WINDOW *local_win);
 
-/* A struct representing the CPU. Will be separated later */
+// A struct representing the CPU. Will be separated later
 struct CPU {
 	unsigned char memory[4096]; // memory
 	unsigned char V[16]; 		// registers
@@ -20,7 +20,7 @@ struct CPU {
 
 int main(int argc, char **argv)
 {
-	/* Check if ROM was passed and flags */
+	// Check if ROM was passed and flags
 	char *filename;
 	int DEBUG;
 	if(argc < 2 || argc > 3){
@@ -43,17 +43,17 @@ int main(int argc, char **argv)
 		}
 	}
 
-	/* Initialize CPU */
+	// Initialize CPU
 	struct CPU *chip8 = new_cpu();
 
-	/* Initialize graphic interface */
+	// Initialize graphic interface
 	WINDOW **windows = initGraphics(DEBUG);
 
-	/* Load ROM */
+	// Load ROM
 	FILE *rom = fopen(filename, "rb");
 	fclose(rom);
 
-	/* Run game loop */
+	// Run game loop 
 	int i = 0;
 	int ticks = 0;
 	while(getch() != KEY_F(1)){
@@ -73,16 +73,16 @@ int main(int argc, char **argv)
 		}
 	}
 	
-	/* Destroy graphic interface */
+	// Destroy graphic interface
 	free(windows);
 	endwin();
 
-	/* Destroy CPU */
+	// Destroy CPU
 	free(chip8);
 	return 0;
 }
 
-/* Creates a new window with a frame border */
+// Creates a new window with a frame border
 WINDOW *create_newwin(int width, int height, int starty, int startx)
 {
 	WINDOW *local_win;
@@ -91,7 +91,7 @@ WINDOW *create_newwin(int width, int height, int starty, int startx)
 	return local_win;
 }
 
-/* Destroys a window, deleting it's border */
+// Destroys a window, deleting it's border
 void destroy_win(WINDOW *local_win)
 {
 	wborder(local_win, ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ');
@@ -99,7 +99,7 @@ void destroy_win(WINDOW *local_win)
 	delwin(local_win);
 }
 
-/* Initializes the graphical interface */
+// Initializes the graphical interface
 WINDOW **initGraphics(int DEBUG)
 {
 
