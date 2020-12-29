@@ -46,12 +46,12 @@ int main(int argc, char **argv)
 	// Initialize CPU
 	struct CPU *chip8 = new_cpu();
 
-	// Initialize graphic interface
-	WINDOW **windows = initGraphics(DEBUG);
-
 	// Load ROM
 	FILE *rom = fopen(filename, "rb");
 	fclose(rom);
+	
+	// Initialize graphic interface
+	WINDOW **windows = initGraphics(DEBUG);
 
 	// Run game loop 
 	int i = 0;
