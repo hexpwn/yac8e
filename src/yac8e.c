@@ -9,6 +9,8 @@ struct CPU *new_cpu();
 void destroy_win(WINDOW *local_win);
 void tick(struct CPU *cpu, WINDOW **windows);
 void draw(struct CPU *cpu, WINDOW *gamewindow);
+void end(struct CPU *cpu, WINDOW **windows);
+void panic(struct CPU *cpu, WINDOW **windows);
 bool push_stack(unsigned short value, struct CPU *cpu);
 unsigned short pop_stack(struct CPU *cpu);
 
@@ -95,16 +97,12 @@ int main(int argc, char **argv)
 					COLS, LINES, filename);
 			mvwprintw(debug_w, 3, 1, "Ticks: %d", ticks);
 			wrefresh(debug_w);
-			sleep(2);
+			sleep(1);
 		}
 	}
 	
 	// Destroy graphic interface
-	free(windows);
-	endwin();
-
-	// Destroy CPU
-	free(chip8);
+	end(chip8, windows);
 	return 0;
 }
 // Creates a new window with a frame border
@@ -345,6 +343,9 @@ void tick(struct CPU *cpu, WINDOW **windows)
 					snprintf(mnemonic, sizeof(mnemonic), "SHL V%d, 1", X);
 					break;
 					}
+				default:
+					snprintf(mnemonic, sizeof(mnemonic), "UNK OPCODE");
+					panic(cpu, windows);
 			}
 		case 0x9000:
 			{
@@ -360,7 +361,7 @@ void tick(struct CPU *cpu, WINDOW **windows)
 			cpu->I = NNN;
 
 			// Debug info
-			snprintf(mnemonic, sizeof(mnemonic), "SETM 0x%03x", NNN);
+			snprintf(mnemonic, sizeof(mnemonic), "MEMS 0x%03x", NNN);
 			break;
 			}
 		case 0xb000:
@@ -378,10 +379,58 @@ void tick(struct CPU *cpu, WINDOW **windows)
 		case 0xe000:
 			break;
 		case 0xf000:
-			snprintf(mnemonic, sizeof(mnemonic), "FFFF");
-			break;
-		default:
-			snprintf(mnemonic, sizeof(mnemonic), "UNK");
+			switch(opcode & 0x00FF){
+				case 0x0007:
+					{
+					// Sets VX to the value of the delay timer. 
+					unsigned int X = opcode >> 8 & 0xF;
+
+					// Debug info.
+					snprintf(mnemonic, sizeof(mnemonic), "TIME V%d, delay", X);
+					break;
+					}
+				case 0x000A:
+					{
+					// A key press is awaited, and then stored in VX. 
+					// (Blocking Operation. All instruction halted until 
+					// next key event)  
+					unsigned int X = opcode >> 8 & 0xF;
+
+					// Debug info.
+					snprintf(mnemonic, sizeof(mnemonic), "GKEY V%d", X);
+					break;
+					}
+				case 0x0015:
+					{
+					// Sets the delay timer to VX.. 
+					unsigned int X = opcode >> 8 & 0xF;
+					// Debug info.
+					snprintf(mnemonic, sizeof(mnemonic), "TIME delay, V%d", X);
+					break;
+					}
+				case 0x0018:
+					{
+					// Sets the sound timer to VX.  
+					unsigned int X = opcode >> 8 & 0xF;
+					// Debug info.
+					snprintf(mnemonic, sizeof(mnemonic), "SNDT V%d", X);
+					break;
+					}
+				case 0x001e:
+					{
+					// Adds VX to I. VF is not affected. 
+					unsigned int X = opcode >> 8 & 0xF;
+					cpu->I += cpu->V[X]; 
+
+					// Debug info.
+					snprintf(mnemonic, sizeof(mnemonic), "MEMA V%d", X);
+					break;
+					}
+				default:
+					snprintf(mnemonic, sizeof(mnemonic), "UNK OPCODE");
+					panic(cpu, windows);
+			}
+		break;
 	}
 
 	// Update pc
@@ -419,3 +468,14 @@ unsigned short pop_stack(struct CPU *cpu)
 	return ret;
 }
 
+void end(struct CPU *cpu, WINDOW **windows)
+{
+	free(windows);
+	endwin();
+	free(cpu);
+}
+void panic(struct CPU *cpu, WINDOW **windows)
+{
+	printf("PANIC!");
+	end(cpu, windows);
+}
