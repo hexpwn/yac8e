@@ -77,16 +77,16 @@ int main(int argc, char **argv)
 		// Run a tick
 		tick(chip8, windows);
 		
-		// Update game window (if necessary)
+		// Draw game window (if necessary)
 		if(drawFlag == 1){
 			draw(chip8, game_w);
 			wrefresh(game_frame_w);
 			wrefresh(game_w);
 		}
 			
-		// Update debug information (if necessary)
-		ticks++;
+		// Draw debug information (if necessary)
 		if(DEBUG){
+			ticks++;
 			mvwprintw(debug_w, 1, 1, 
 					"Window size: %d x %d - ROM Filename: %s", 
 					COLS, LINES, filename);
@@ -199,51 +199,142 @@ void tick(struct CPU *cpu, WINDOW **windows)
 					snprintf(mnemonic, sizeof(mnemonic), "RET");
 					break;
 				default:
-					snprintf(mnemonic, sizeof(mnemonic), "CALL");
+					{
+ 					unsigned short NNN = opcode & 0x0FFF;
+					snprintf(mnemonic, sizeof(mnemonic), "CALL 0x%03x", NNN);
 					break;
-			}
+					}
+			};
 		case 0x1000:
-			snprintf(mnemonic, sizeof(mnemonic), "JMP");
+			{
+ 			unsigned short NNN = opcode & 0x0FFF;
+			snprintf(mnemonic, sizeof(mnemonic), "JMP 0x%03x", NNN);
 			break;
-		case 0x2000:{
-			unsigned short addr = opcode & 0xFFF;
-			snprintf(mnemonic, sizeof(mnemonic), "CALL 0x%03x", addr);
+			}
+		case 0x2000:
+			{
+			unsigned short NNN = opcode & 0x0FFF;
+			snprintf(mnemonic, sizeof(mnemonic), "CALL 0x%03x", NNN);
 			break;
 			}
 		case 0x3000:
-			snprintf(mnemonic, sizeof(mnemonic), "SEQI");
+			{
+			unsigned int X = opcode >> 8 & 0xF;
+			unsigned short NN = opcode & 0x00FF;
+			snprintf(mnemonic, sizeof(mnemonic), "SEQI V%d, 0x%02x", X, NN);
 			break;
+			}
 		case 0x4000:
-			snprintf(mnemonic, sizeof(mnemonic), "SNEQ");
+			{
+			unsigned int X = opcode >> 8 & 0xF;
+			unsigned short NN = opcode & 0x00FF;
+			snprintf(mnemonic, sizeof(mnemonic), "SNEQ V%d, 0x%02x", X, NN);
 			break;
+			}
 		case 0x5000:
-			snprintf(mnemonic, sizeof(mnemonic), "SEQR");
+			{
+			unsigned int X = opcode >> 8 & 0xF;
+			unsigned int Y = opcode >> 4 & 0xF;
+			snprintf(mnemonic, sizeof(mnemonic), "SEQR V%d, V%d", X, Y);
 			break;
+			}
 		case 0x6000:
-			snprintf(mnemonic, sizeof(mnemonic), "STRI");
+			{
+			unsigned int X = opcode >> 8 & 0xF;
+			unsigned short NN = opcode & 0x00FF;
+			snprintf(mnemonic, sizeof(mnemonic), "STRI 0x%02x, V%d", X, NN);
 			break;
+			}
 		case 0x7000:
-			snprintf(mnemonic, sizeof(mnemonic), "ADD");
+			{
+			unsigned int X = opcode >> 8 & 0xF;
+			unsigned short NN = opcode & 0x00FF;
+			snprintf(mnemonic, sizeof(mnemonic), "ADD V%d, 0x%02x", X, NN);
 			break;
+			}
 		case 0x8000:
 			switch(opcode & 0x000F){
-				case 0x0:{
-					int X, Y;
-					X = opcode & 0x0F00;
-					Y = opcode & 0x00F0;
-					snprintf(mnemonic, sizeof(mnemonic), "STR V%d, V%d", X, Y);
+				case 0x0:
+					{
+					unsigned int X = opcode >> 8 & 0xF;
+					unsigned int Y = opcode >> 4 & 0xF;
+					snprintf(mnemonic, sizeof(mnemonic), "STR V%x, V%x", Y, X);
 					break;
-				}
+					}
+				case 0x1:
+					{
+					unsigned int X = opcode >> 8 & 0xF;
+					unsigned int Y = opcode >> 4 & 0xF;
+					snprintf(mnemonic, sizeof(mnemonic), "OR V%d, V%d", X, Y);
+					break;
+					}
+				case 0x2:
+					{
+					unsigned int X = opcode >> 8 & 0xF;
+					unsigned int Y = opcode >> 4 & 0xF;
+					snprintf(mnemonic, sizeof(mnemonic), "AND V%d, V%d", X, Y);
+					break;
+					}
+				case 0x3:
+					{
+					unsigned int X = opcode >> 8 & 0xF;
+					unsigned int Y = opcode >> 4 & 0xF;
+					snprintf(mnemonic, sizeof(mnemonic), "XOR V%d, V%d", X, Y);
+					break;
+					}
+				case 0x4:
+					{
+					unsigned int X = opcode >> 8 & 0xF;
+					unsigned int Y = opcode >> 4 & 0xF;
+					snprintf(mnemonic, sizeof(mnemonic), "ADD V%d, V%d", X, Y);
+					break;
+					}
+				case 0x5:
+					{
+					unsigned int X = opcode >> 8 & 0xF;
+					unsigned int Y = opcode >> 4 & 0xF;
+					snprintf(mnemonic, sizeof(mnemonic), "SUB V%d, V%d", X, Y);
+					break;
+					}
+				case 0x6:
+					{
+					unsigned int X = opcode >> 8 & 0xF;
+					snprintf(mnemonic, sizeof(mnemonic), "SHR V%d, 1", X);
+					break;
+					}
+				case 0x7:
+					{
+					unsigned int X = opcode >> 8 & 0xF;
+					unsigned int Y = opcode >> 4 & 0xF;
+					snprintf(mnemonic, sizeof(mnemonic), "SUBI V%d, V%d", X, Y);
+					break;
+					}
+				case 0xE:
+					{
+					unsigned int X = opcode >> 8 & 0xF;
+					snprintf(mnemonic, sizeof(mnemonic), "SHL V%d, 1", X);
+					break;
+					}
 			}
 		case 0x9000:
-			snprintf(mnemonic, sizeof(mnemonic), "SNEQ");
+			{
+			unsigned int X = opcode >> 8 & 0xF;
+			unsigned int Y = opcode >> 4 & 0xF;
+			snprintf(mnemonic, sizeof(mnemonic), "SNEQ V%d, V%d", X, Y);
 			break;
+			}
 		case 0xa000:
-			snprintf(mnemonic, sizeof(mnemonic), "SETM");
+			{
+			unsigned short NNN = opcode & 0x0FFF;
+			snprintf(mnemonic, sizeof(mnemonic), "SETM 0x%03x", NNN);
 			break;
+			}
 		case 0xb000:
-			snprintf(mnemonic, sizeof(mnemonic), "JMPP");
+			{
+			unsigned short NNN = opcode & 0x0FFF;
+			snprintf(mnemonic, sizeof(mnemonic), "JMPA V0, 0x%03x", NNN);
 			break;
+			}
 		case 0xc000:
 			snprintf(mnemonic, sizeof(mnemonic), "RAND");
 			break;
@@ -263,7 +354,7 @@ void tick(struct CPU *cpu, WINDOW **windows)
 	cpu->pc += 2;
 
 	// Update debug info
-	mvwprintw(debug_w, 4, 1, "opcode: %04x Mnemonic: %s", opcode, mnemonic);
+	mvwprintw(debug_w, 4, 1, "opcode: %04x Mnemonic: %s\n", opcode, mnemonic);
 }
 
 void draw(struct CPU *cpu, WINDOW *gamewindow)
