@@ -1,10 +1,22 @@
 #include <ncurses.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <assert.h>
 
 WINDOW *create_newwin(int width, int height, int starty, int startx);
 WINDOW **initGraphics(int debug);
+struct CPU *new_cpu();
 void destroy_win(WINDOW *local_win);
+
+/* A struct representing the CPU. Will be separated later */
+struct CPU {
+	unsigned char memory[4096]; // memory
+	unsigned char V[16]; 		// registers
+	unsigned short stack[16];   // call stack
+	unsigned char inputs[16];   // keyboard inputs
+	unsigned short I; 			// index registers
+	unsigned short pc; 			// program counter
+};
 
 int main(int argc, char **argv)
 {
@@ -32,6 +44,7 @@ int main(int argc, char **argv)
 	}
 
 	/* Initialize CPU */
+	struct CPU *chip8 = new_cpu();
 
 	/* Initialize graphic interface */
 	WINDOW **windows = initGraphics(DEBUG);
@@ -64,6 +77,8 @@ int main(int argc, char **argv)
 	free(windows);
 	endwin();
 
+	/* Destroy CPU */
+	free(chip8);
 	return 0;
 }
 
@@ -122,4 +137,11 @@ WINDOW **initGraphics(int DEBUG)
 	windows[1] = create_newwin(g_width, g_height, starty, startx);
 
 	return windows;
+}
+
+struct CPU *new_cpu()
+{
+	struct CPU *cpu = malloc(sizeof(struct CPU));
+	assert(cpu != NULL);
+	return cpu;
 }
