@@ -13,6 +13,7 @@ struct CPU {
 	unsigned char memory[4096]; // memory
 	unsigned char V[16]; 		// registers
 	unsigned short stack[16];   // call stack
+	unsigned char gfx[64 * 32]; // frame buffer (64x32 pixels)
 	unsigned char inputs[16];   // keyboard inputs
 	unsigned short I; 			// index registers
 	unsigned short pc; 			// program counter
