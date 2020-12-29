@@ -48,8 +48,15 @@ int main(int argc, char **argv)
 
 	// Load ROM
 	FILE *rom = fopen(filename, "rb");
+	fseek(rom, 0, SEEK_END);
+	long lsize = 0;
+	lsize = ftell(rom);
+	rewind(rom);
+
+	size_t n = fread(&chip8->memory[512], 1, lsize, rom);
+	printf("Read %ld bytes from %s\n", n, filename);
 	fclose(rom);
-	
+
 	// Initialize graphic interface
 	WINDOW **windows = initGraphics(DEBUG);
 
@@ -66,7 +73,6 @@ int main(int argc, char **argv)
 						COLS, LINES, filename);
 				mvwprintw(windows[0], 3, 1, "Cycles: %d", i);
 				mvwprintw(windows[0], 4, 1, "Ticks: %d", ticks);
-
 			}
 			wrefresh(windows[0]);
 			wrefresh(windows[1]);
