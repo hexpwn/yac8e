@@ -1,5 +1,5 @@
 LDFLAGS=-lncurses
-FLAGS=-g
+FLAGS=-g -Wall
 
 all: 
 	gcc src/yac8e.c -o bin/yac8e ${LDFLAGS} ${FLAGS}
