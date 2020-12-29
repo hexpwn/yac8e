@@ -9,6 +9,8 @@ struct CPU *new_cpu();
 void destroy_win(WINDOW *local_win);
 void tick(struct CPU *cpu, WINDOW **windows);
 void draw(struct CPU *cpu, WINDOW *gamewindow);
+bool push_stack(unsigned short value, struct CPU *cpu);
+unsigned short pop_stack(struct CPU *cpu);
 
 // A struct representing the CPU. Will be separated later
 struct CPU {
@@ -19,6 +21,7 @@ struct CPU {
 	unsigned char inputs[16];   // keyboard inputs
 	unsigned short I; 			// index registers
 	unsigned short pc; 			// program counter
+	unsigned int sp; 			// stack pointer
 };
 
 int main(int argc, char **argv)
@@ -92,7 +95,7 @@ int main(int argc, char **argv)
 					COLS, LINES, filename);
 			mvwprintw(debug_w, 3, 1, "Ticks: %d", ticks);
 			wrefresh(debug_w);
-			sleep(1);
+			sleep(2);
 		}
 	}
 	
@@ -138,7 +141,7 @@ WINDOW **initGraphics(int debug)
 	curs_set(0); 			// Set cursor invisible
 
 	// Debug info window config
-	i_height 	= 6;
+	i_height 	= 7;
 	i_width 	= COLS - 2;
 
 	// Game window frame config
@@ -196,8 +199,16 @@ void tick(struct CPU *cpu, WINDOW **windows)
 					snprintf(mnemonic, sizeof(mnemonic), "CLR");
 					break;
 				case 0x00EE:
+					{
+					// Returns from a subroutine. 
+					unsigned short ret_addr = pop_stack(cpu);
+					assert(ret_addr != 0xffff);
+					cpu->pc = ret_addr;
+
+					// Debug info.
 					snprintf(mnemonic, sizeof(mnemonic), "RET");
 					break;
+					}
 				default:
 					{
  					unsigned short NNN = opcode & 0x0FFF;
@@ -207,13 +218,22 @@ void tick(struct CPU *cpu, WINDOW **windows)
 			};
 		case 0x1000:
 			{
+			// Jumps to address NNN.
  			unsigned short NNN = opcode & 0x0FFF;
+			cpu->pc = NNN - 2; // this is disgusting...
+
+			// Debug info
 			snprintf(mnemonic, sizeof(mnemonic), "JMP 0x%03x", NNN);
 			break;
 			}
 		case 0x2000:
 			{
+			// Calls subroutine at NNN.
 			unsigned short NNN = opcode & 0x0FFF;
+			bool s = push_stack(cpu->pc+2, cpu);
+			assert(s != false);
+			cpu->pc = NNN - 2;
+			
 			snprintf(mnemonic, sizeof(mnemonic), "CALL 0x%03x", NNN);
 			break;
 			}
@@ -240,15 +260,25 @@ void tick(struct CPU *cpu, WINDOW **windows)
 			}
 		case 0x6000:
 			{
+			// Sets VX to NN. 
 			unsigned int X = opcode >> 8 & 0xF;
 			unsigned short NN = opcode & 0x00FF;
-			snprintf(mnemonic, sizeof(mnemonic), "STRI 0x%02x, V%d", X, NN);
+
+			cpu->V[X] = NN;
+
+			// Debug info
+			snprintf(mnemonic, sizeof(mnemonic), "STRI 0x%02x, V%d", NN, X);
 			break;
 			}
 		case 0x7000:
 			{
+			// Adds NN to VX. (Carry flag is not changed) 
 			unsigned int X = opcode >> 8 & 0xF;
 			unsigned short NN = opcode & 0x00FF;
+
+			cpu->V[X] += NN;
+
+			// Debug info.
 			snprintf(mnemonic, sizeof(mnemonic), "ADD V%d, 0x%02x", X, NN);
 			break;
 			}
@@ -325,7 +355,11 @@ void tick(struct CPU *cpu, WINDOW **windows)
 			}
 		case 0xa000:
 			{
+			// Sets I to the address NNN.
 			unsigned short NNN = opcode & 0x0FFF;
+			cpu->I = NNN;
+
+			// Debug info
 			snprintf(mnemonic, sizeof(mnemonic), "SETM 0x%03x", NNN);
 			break;
 			}
@@ -355,8 +389,33 @@ void tick(struct CPU *cpu, WINDOW **windows)
 
 	// Update debug info
 	mvwprintw(debug_w, 4, 1, "opcode: %04x Mnemonic: %s\n", opcode, mnemonic);
+	mvwprintw(debug_w, 5, 1, "PC+2: %04x I: 0x%04x V0: 0x%02x V1: 0x%02x\
+ V2: 0x%02x - Stack[%04x %04x %04x]\n", cpu->pc, cpu->I, cpu->V[0],\
+ cpu->V[1], cpu->V[2], cpu->stack[0], cpu->stack[1], cpu->stack[2]);
 }
 
 void draw(struct CPU *cpu, WINDOW *gamewindow)
 {
 }
+
+// #TODO: Send this to a helper file
+bool push_stack(unsigned short value, struct CPU *cpu)
+{
+	if(cpu->sp >= sizeof(cpu->stack) - 1){
+		return false;
+	}
+	cpu->sp++;
+	cpu->stack[cpu->sp] = value;
+	return true;
+}
+
+unsigned short pop_stack(struct CPU *cpu)
+{
+	if(cpu->sp == -1){
+		return 0xffff;
+	}
+	unsigned short ret = cpu->stack[cpu->sp];
+	cpu->sp--;
+	return ret;
+}
+
