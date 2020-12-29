@@ -7,7 +7,7 @@ WINDOW *create_newwin(int width, int height, int starty, int startx);
 WINDOW **initGraphics(int debug);
 struct CPU *new_cpu();
 void destroy_win(WINDOW *local_win);
-void tick(struct CPU *cpu);
+void tick(struct CPU *cpu, WINDOW **windows);
 void draw(struct CPU *cpu, WINDOW *gamewindow);
 
 // A struct representing the CPU. Will be separated later
@@ -48,6 +48,7 @@ int main(int argc, char **argv)
 
 	// Initialize CPU
 	struct CPU *chip8 = new_cpu();
+	chip8->pc = 0x200;
 
 	// Load ROM
 	FILE *rom = fopen(filename, "rb");
@@ -74,7 +75,7 @@ int main(int argc, char **argv)
 	int drawFlag = 1;
 	while(getch() != KEY_F(1)){
 		// Run a tick
-		tick(chip8);
+		tick(chip8, windows);
 		
 		// Update game window (if necessary)
 		if(drawFlag == 1){
@@ -91,6 +92,7 @@ int main(int argc, char **argv)
 					COLS, LINES, filename);
 			mvwprintw(debug_w, 3, 1, "Ticks: %d", ticks);
 			wrefresh(debug_w);
+			sleep(1);
 		}
 	}
 	
@@ -102,7 +104,6 @@ int main(int argc, char **argv)
 	free(chip8);
 	return 0;
 }
-
 // Creates a new window with a frame border
 WINDOW *create_newwin(int width, int height, int starty, int startx)
 {
@@ -121,9 +122,8 @@ void destroy_win(WINDOW *local_win)
 }
 
 // Initializes the graphical interface
-WINDOW **initGraphics(int DEBUG)
+WINDOW **initGraphics(int debug)
 {
-
 	int startx, starty, 
 		i_width, i_height, 
 		gf_width, gf_height, 
@@ -138,7 +138,7 @@ WINDOW **initGraphics(int DEBUG)
 	curs_set(0); 			// Set cursor invisible
 
 	// Debug info window config
-	i_height 	= 5;
+	i_height 	= 6;
 	i_width 	= COLS - 2;
 
 	// Game window frame config
@@ -152,7 +152,7 @@ WINDOW **initGraphics(int DEBUG)
 	WINDOW **windows = malloc(sizeof(WINDOW)*2);
 
 	// Create the debug info window
-	if(DEBUG == 1){
+	if(debug == 1){
 		windows[0] = create_newwin(i_width, i_height, 0, 0);
 		mvwprintw(windows[0], 2, 1, "Game size: %d x %d", g_width, g_height);
 		starty = i_height + 1;
@@ -160,7 +160,7 @@ WINDOW **initGraphics(int DEBUG)
 	else{
 		starty = ((LINES - gf_height) / 2);
 	}
-	// Creates the game window frame
+	// Creates the game frame window
 	startx = (COLS - gf_width) / 2;
 	windows[1] = create_newwin(gf_width, gf_height, starty, startx);
 
@@ -178,9 +178,78 @@ struct CPU *new_cpu()
 	return cpu;
 }
 
-void tick(struct CPU *cpu)
+void tick(struct CPU *cpu, WINDOW **windows)
 {
+	WINDOW *debug_w = windows[0];
+	unsigned short opcode;
 
+	// Update opcode
+	opcode = cpu->memory[cpu->pc] << 8 | cpu->memory[cpu->pc + 1];
+
+	// Decode opcode
+	char *mnemonic;
+	unsigned char code;
+	code = opcode >> 12;
+
+	switch(code){
+		case 0x0:
+			mnemonic = "CALL";
+			break;
+		case 0x1:
+			mnemonic = "JMP";
+			break;
+		case 0x2:
+			mnemonic = "CALL";
+			break;
+		case 0x3:
+			mnemonic = "SEQI"; // Skip Equal Imm
+			break;
+		case 0x4:
+			mnemonic = "SNEQImm"; // Skip Not Equal
+			break;
+		case 0x5:
+			mnemonic = "SEQR"; // Skip Equal Reg
+			break;
+		case 0x6:
+			mnemonic = "STRI"; // Store Imm
+			break;
+		case 0x7:
+			mnemonic = "ADD";
+			break;
+		case 0x8:
+			mnemonic = "bitw";
+			break;
+		case 0x9:
+			mnemonic = "SNEQR";
+			break;
+		case 0xa:
+			mnemonic = "SETM";
+			break;
+		case 0xb:
+			mnemonic = "JMPP";
+			break;
+		case 0xc:
+			mnemonic = "RAND";
+			break;
+		case 0xd:
+			mnemonic = "DRAW";
+			break;
+		case 0xe:
+			mnemonic = "KEYP";
+			break;
+		case 0xf:
+			mnemonic = "FFFF";
+			break;
+		default:
+			mnemonic = "unkn";
+	}
+
+	// Update pc
+	cpu->pc += 2;
+
+	// Update debug info
+	mvwprintw(debug_w, 4, 1, "opcode: %x - code: %x - Mnemonic: %s", opcode,
+			code, mnemonic);
 }
 
 void draw(struct CPU *cpu, WINDOW *gamewindow)
