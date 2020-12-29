@@ -7,6 +7,8 @@ WINDOW *create_newwin(int width, int height, int starty, int startx);
 WINDOW **initGraphics(int debug);
 struct CPU *new_cpu();
 void destroy_win(WINDOW *local_win);
+void tick(struct CPU *cpu);
+void draw(struct CPU *cpu, WINDOW *gamewindow);
 
 // A struct representing the CPU. Will be separated later
 struct CPU {
@@ -63,23 +65,32 @@ int main(int argc, char **argv)
 
 	// Initialize graphic interface
 	WINDOW **windows = initGraphics(DEBUG);
+	WINDOW *debug_w = windows[0];
+	WINDOW *game_frame_w = windows[1];
+	WINDOW *game_w = windows[2];
 
 	// Run game loop 
-	int i = 0;
 	int ticks = 0;
+	int drawFlag = 1;
 	while(getch() != KEY_F(1)){
-		i++;
-		if(i % 60 == 0){
-			if(DEBUG){
-				ticks++;
-				mvwprintw(windows[0], 1, 1, 
-						"Window size: %d x %d - ROM Filename: %s", 
-						COLS, LINES, filename);
-				mvwprintw(windows[0], 3, 1, "Cycles: %d", i);
-				mvwprintw(windows[0], 4, 1, "Ticks: %d", ticks);
-			}
-			wrefresh(windows[0]);
-			wrefresh(windows[1]);
+		// Run a tick
+		tick(chip8);
+		
+		// Update game window (if necessary)
+		if(drawFlag == 1){
+			draw(chip8, game_w);
+			wrefresh(game_frame_w);
+			wrefresh(game_w);
+		}
+			
+		// Update debug information (if necessary)
+		ticks++;
+		if(DEBUG){
+			mvwprintw(debug_w, 1, 1, 
+					"Window size: %d x %d - ROM Filename: %s", 
+					COLS, LINES, filename);
+			mvwprintw(debug_w, 3, 1, "Ticks: %d", ticks);
+			wrefresh(debug_w);
 		}
 	}
 	
@@ -113,7 +124,10 @@ void destroy_win(WINDOW *local_win)
 WINDOW **initGraphics(int DEBUG)
 {
 
-	int startx, starty, i_width, i_height, g_width, g_height;
+	int startx, starty, 
+		i_width, i_height, 
+		gf_width, gf_height, 
+		g_width, g_height;
 
 	// Start and config curses
 	initscr();
@@ -123,13 +137,17 @@ WINDOW **initGraphics(int DEBUG)
 	nodelay(stdscr, TRUE);  // Non-blocking getch
 	curs_set(0); 			// Set cursor invisible
 
-	// Info window config
-	i_height = 6;
-	i_width = COLS - 2;
+	// Debug info window config
+	i_height 	= 5;
+	i_width 	= COLS - 2;
+
+	// Game window frame config
+	gf_height 	= 34;
+	gf_width 	= 66;
 
 	// Game window config
-	g_height = 32;
-	g_width = 64;
+	g_height 	= 32;
+	g_width 	= 64;
 
 	WINDOW **windows = malloc(sizeof(WINDOW)*2);
 
@@ -137,15 +155,19 @@ WINDOW **initGraphics(int DEBUG)
 	if(DEBUG == 1){
 		windows[0] = create_newwin(i_width, i_height, 0, 0);
 		mvwprintw(windows[0], 2, 1, "Game size: %d x %d", g_width, g_height);
-		starty = ((LINES + i_height - g_height) / 2) + 1;
+		starty = i_height + 1;
 	}
 	else{
-		starty = ((LINES - g_height) / 2);
+		starty = ((LINES - gf_height) / 2);
 	}
-	// Creates the game window
-	startx = (COLS - g_width) / 2;
-	windows[1] = create_newwin(g_width, g_height, starty, startx);
+	// Creates the game window frame
+	startx = (COLS - gf_width) / 2;
+	windows[1] = create_newwin(gf_width, gf_height, starty, startx);
 
+	// Creates the game window
+	startx += 1;
+	starty += 1;
+	windows[2] = newwin(g_height, g_width, starty, startx);
 	return windows;
 }
 
@@ -154,4 +176,13 @@ struct CPU *new_cpu()
 	struct CPU *cpu = malloc(sizeof(struct CPU));
 	assert(cpu != NULL);
 	return cpu;
+}
+
+void tick(struct CPU *cpu)
+{
+
+}
+
+void draw(struct CPU *cpu, WINDOW *gamewindow)
+{
 }
