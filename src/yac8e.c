@@ -187,69 +187,83 @@ void tick(struct CPU *cpu, WINDOW **windows)
 	opcode = cpu->memory[cpu->pc] << 8 | cpu->memory[cpu->pc + 1];
 
 	// Decode opcode
-	char *mnemonic;
-	unsigned char code;
-	code = opcode >> 12;
+	char mnemonic[128];
 
-	switch(code){
-		case 0x0:
-			mnemonic = "CALL";
+	switch(opcode & 0xF000){
+		case 0x0000:
+			switch(opcode & 0x00FF){
+				case 0x00E0:
+					snprintf(mnemonic, sizeof(mnemonic), "CLR");
+					break;
+				case 0x00EE:
+					snprintf(mnemonic, sizeof(mnemonic), "RET");
+					break;
+				default:
+					snprintf(mnemonic, sizeof(mnemonic), "CALL");
+					break;
+			}
+		case 0x1000:
+			snprintf(mnemonic, sizeof(mnemonic), "JMP");
 			break;
-		case 0x1:
-			mnemonic = "JMP";
+		case 0x2000:{
+			unsigned short addr = opcode & 0xFFF;
+			snprintf(mnemonic, sizeof(mnemonic), "CALL 0x%03x", addr);
 			break;
-		case 0x2:
-			mnemonic = "CALL";
+			}
+		case 0x3000:
+			snprintf(mnemonic, sizeof(mnemonic), "SEQI");
 			break;
-		case 0x3:
-			mnemonic = "SEQI"; // Skip Equal Imm
+		case 0x4000:
+			snprintf(mnemonic, sizeof(mnemonic), "SNEQ");
 			break;
-		case 0x4:
-			mnemonic = "SNEQImm"; // Skip Not Equal
+		case 0x5000:
+			snprintf(mnemonic, sizeof(mnemonic), "SEQR");
 			break;
-		case 0x5:
-			mnemonic = "SEQR"; // Skip Equal Reg
+		case 0x6000:
+			snprintf(mnemonic, sizeof(mnemonic), "STRI");
 			break;
-		case 0x6:
-			mnemonic = "STRI"; // Store Imm
+		case 0x7000:
+			snprintf(mnemonic, sizeof(mnemonic), "ADD");
 			break;
-		case 0x7:
-			mnemonic = "ADD";
+		case 0x8000:
+			switch(opcode & 0x000F){
+				case 0x0:{
+					int X, Y;
+					X = opcode & 0x0F00;
+					Y = opcode & 0x00F0;
+					snprintf(mnemonic, sizeof(mnemonic), "STR V%d, V%d", X, Y);
+					break;
+				}
+			}
+		case 0x9000:
+			snprintf(mnemonic, sizeof(mnemonic), "SNEQ");
 			break;
-		case 0x8:
-			mnemonic = "bitw";
+		case 0xa000:
+			snprintf(mnemonic, sizeof(mnemonic), "SETM");
 			break;
-		case 0x9:
-			mnemonic = "SNEQR";
+		case 0xb000:
+			snprintf(mnemonic, sizeof(mnemonic), "JMPP");
 			break;
-		case 0xa:
-			mnemonic = "SETM";
+		case 0xc000:
+			snprintf(mnemonic, sizeof(mnemonic), "RAND");
 			break;
-		case 0xb:
-			mnemonic = "JMPP";
+		case 0xd000:
+			snprintf(mnemonic, sizeof(mnemonic), "DRAW");
 			break;
-		case 0xc:
-			mnemonic = "RAND";
+		case 0xe000:
 			break;
-		case 0xd:
-			mnemonic = "DRAW";
-			break;
-		case 0xe:
-			mnemonic = "KEYP";
-			break;
-		case 0xf:
-			mnemonic = "FFFF";
+		case 0xf000:
+			snprintf(mnemonic, sizeof(mnemonic), "FFFF");
 			break;
 		default:
-			mnemonic = "unkn";
+			snprintf(mnemonic, sizeof(mnemonic), "UNK");
 	}
 
 	// Update pc
 	cpu->pc += 2;
 
 	// Update debug info
-	mvwprintw(debug_w, 4, 1, "opcode: %x - code: %x - Mnemonic: %s", opcode,
-			code, mnemonic);
+	mvwprintw(debug_w, 4, 1, "opcode: %04x Mnemonic: %s", opcode, mnemonic);
 }
 
 void draw(struct CPU *cpu, WINDOW *gamewindow)
