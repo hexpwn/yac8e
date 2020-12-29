@@ -24,6 +24,7 @@ struct CPU {
 	unsigned short I; 			// index registers
 	unsigned short pc; 			// program counter
 	unsigned int sp; 			// stack pointer
+	bool draw; 					// draw flag
 };
 
 int main(int argc, char **argv)
@@ -77,16 +78,16 @@ int main(int argc, char **argv)
 
 	// Run game loop 
 	int ticks = 0;
-	int drawFlag = 1;
 	while(getch() != KEY_F(1)){
 		// Run a tick
 		tick(chip8, windows);
 		
 		// Draw game window (if necessary)
-		if(drawFlag == 1){
+		if(chip8->draw){
 			draw(chip8, game_w);
 			wrefresh(game_frame_w);
 			wrefresh(game_w);
+			chip8->draw = false;
 		}
 			
 		// Draw debug information (if necessary)
@@ -237,8 +238,13 @@ void tick(struct CPU *cpu, WINDOW **windows)
 			}
 		case 0x3000:
 			{
+			// Skips the next instruction if VX equals NN. 
+			// (Usually the next instruction is a jump to skip a code block) 
 			unsigned int X = opcode >> 8 & 0xF;
 			unsigned short NN = opcode & 0x00FF;
+			if(cpu->V[X] == NN){
+				cpu->pc += 2;
+			}
 			snprintf(mnemonic, sizeof(mnemonic), "SEQI V%d, 0x%02x", X, NN);
 			break;
 			}
@@ -374,8 +380,23 @@ void tick(struct CPU *cpu, WINDOW **windows)
 			snprintf(mnemonic, sizeof(mnemonic), "RAND");
 			break;
 		case 0xd000:
+			{
+			// Draws a sprite at coordinate (VX, VY) that has a width of 8 
+			// pixels and a height of N+1 pixels. Each row of 8 pixels is read 
+			// as bit-coded starting from memory location I; I value doesn’t 
+			// change after the execution of this instruction. As described 
+			// above, VF is set to 1 if any screen pixels are flipped from set 
+			// to unset when the sprite is drawn, and to 0 if that doesn’t 
+			// happen 
+			unsigned int X = opcode >> 8 & 0xF; 
+			unsigned int Y = opcode >> 4 & 0xF; 
+			unsigned int N = opcode & 0xF;
+
+			// Debug info.
 			snprintf(mnemonic, sizeof(mnemonic), "DRAW");
+			cpu->draw = true;
 			break;
+			}
 		case 0xe000:
 			break;
 		case 0xf000:
@@ -453,8 +474,8 @@ bool push_stack(unsigned short value, struct CPU *cpu)
 	if(cpu->sp >= sizeof(cpu->stack) - 1){
 		return false;
 	}
-	cpu->sp++;
 	cpu->stack[cpu->sp] = value;
+	cpu->sp++;
 	return true;
 }
 
