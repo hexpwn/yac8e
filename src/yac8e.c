@@ -713,10 +713,19 @@ void tick()
 					};
 				case 0x0055:
 					{
-					// #TODO
-					printf("opcode: 0x%04x", opcode);
-					endwin();
-					exit(-1);
+					// Stores V0 to VX (including VX) in memory starting at 
+					// address I. The offset from I is increased by 1 for each 
+					// value written, but I itself is left unmodified.
+					unsigned int X = opcode >> 8 & 0x0F00;
+					for(int i = 0; i <= X; i++){
+						chip8->memory[chip8->I + i] = chip8->V[i];
+					}
+					chip8->pc += 2;
+
+					// Debug info.
+					snprintf(mnemonic, sizeof(mnemonic), "REGD V0-V%d", X);
+					break;
+
 					}
 				case 0x0065:
 					{
