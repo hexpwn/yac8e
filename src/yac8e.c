@@ -5,7 +5,8 @@
 #include <assert.h>
 
 WINDOW *create_newwin(int width, int height, int starty, int startx);
-void initGraphics();
+void initGraphics(int DEBUG);
+void initFonts();
 struct CPU *new_cpu();
 void destroy_win(WINDOW *local_win);
 void destroyWindows();
@@ -64,6 +65,9 @@ int main(int argc, char **argv)
 	chip8 = new_cpu();
 	chip8->pc = 0x200;
 
+	// Initialize internal fonts
+	initFonts();	
+
 	// Load ROM
 	FILE *rom = fopen(filename, "rb");
 	assert(rom != NULL);
@@ -79,7 +83,7 @@ int main(int argc, char **argv)
 	fclose(rom);
 
 	// Initialize ncurses interface 
-	initGraphics();
+	initGraphics(DEBUG);
 
 	// Run game loop 
 	int ticks = 0;
@@ -90,7 +94,6 @@ int main(int argc, char **argv)
 		// Create windows
 		createWindows();
 		WINDOW *debug_w = windows[0]; 
-		WINDOW *game_w  = windows[1]; 
 
 		// Update input
 		chip8->input = 0x00;
@@ -103,7 +106,6 @@ int main(int argc, char **argv)
 		if(chip8->draw){
 			chip8->draw = false;
 			draw();
-			wrefresh(game_w);
 		}
 			
 		// Draw debug information (if necessary)
@@ -114,7 +116,6 @@ int main(int argc, char **argv)
 					COLS, LINES, filename);
 			mvwprintw(debug_w, 3, 1, "Ticks: %d", ticks);
 			wrefresh(debug_w);
-			sleep(1);
 		}
 	}
 	
@@ -126,7 +127,7 @@ WINDOW *create_newwin(int width, int height, int starty, int startx)
 {
 	WINDOW *local_win;
 	local_win = newwin(height, width, starty, startx);
-	box(local_win, 0, 0);
+	//box(local_win, 0, 0);
 	return local_win;
 }
 
@@ -174,13 +175,15 @@ void destroyWindows()
 }
 
 // Initializes ncurses
-void initGraphics()
+void initGraphics(int DEBUG)
 {
 	initscr();
 	cbreak(); 				// Line buffering disabled
 	keypad(stdscr, TRUE);   // Enable Function keys (ex: F1)
 	noecho(); 				// Do not display the users keypresses
-	nodelay(stdscr, TRUE);  // Non-blocking getch
+	if(!DEBUG){
+		nodelay(stdscr, TRUE);  // Non-blocking getch
+	}
 	curs_set(0); 			// Set cursor invisible
 }
 
@@ -206,6 +209,7 @@ void tick()
 		case 0x0000:
 			switch(opcode & 0x00FF){
 				case 0x00E0:
+					{
 					// Clears the screen.
 					memset(&chip8->gfx, 0x00, sizeof(chip8->gfx));
 					chip8->draw = true;
@@ -214,6 +218,7 @@ void tick()
 					// Debug info.
 					snprintf(mnemonic, sizeof(mnemonic), "CLR");
 					break;
+					}
 				case 0x00EE:
 					{
 					// Returns from a subroutine. 
@@ -239,6 +244,7 @@ void tick()
 					*/
 					}
 			};
+			break;
 		case 0x1000:
 			{
 			// Jumps to address NNN.
@@ -474,7 +480,8 @@ void tick()
 					snprintf(mnemonic, sizeof(mnemonic), "UNK OPCODE");
 					printf("panic! opcode: 0x%04x\n", opcode);
 					panic();
-			}
+			};
+			break;
 		case 0x9000:
 			{
 			// Skips the next instruction if VX doesn't equal VY. (Usually the 
@@ -599,7 +606,6 @@ void tick()
 					printf("panic! opcode: 0x%04x\n", opcode);
 					panic();
 			}
-
 			break;
 		case 0xf000:
 			switch(opcode & 0x00FF){
@@ -673,11 +679,64 @@ void tick()
 					}
 				case 0x0029:
 					{
-					// #TODO
-					printf("opcode: 0x%04x", opcode);
-					endwin();
-					exit(-1);
-					}
+					// Sets I to the location of the sprite for the character
+					// in VX. Characters 0-F (in hexadecimal) are represented 
+					// by a 4x5 font. 
+					unsigned int X = opcode >> 8 & 0xF;
+					switch(chip8->V[X]){
+						case 0x00:
+							chip8->I = 0x0000;
+							break;
+						case 0x01:
+							chip8->I = 0x0010;
+							break;
+						case 0x02:
+							chip8->I = 0x0020;
+							break;
+						case 0x03:
+							chip8->I = 0x0030;
+							break;
+						case 0x04:
+							chip8->I = 0x0040;
+							break;
+						case 0x05:
+							chip8->I = 0x0050;
+							break;
+						case 0x06:
+							chip8->I = 0x0060;
+							break;
+						case 0x07:
+							chip8->I = 0x0070;
+							break;
+						case 0x08:
+							chip8->I = 0x0080;
+							break;
+						case 0x09:
+							chip8->I = 0x0090;
+							break;
+						case 0x0a:
+							chip8->I = 0x00a0;
+							break;
+						case 0x0b:
+							chip8->I = 0x00b0;
+							break;
+						case 0x0c:
+							chip8->I = 0x00c0;
+							break;
+						case 0x0d:
+							chip8->I = 0x00d0;
+							break;
+						case 0x0e:
+							chip8->I = 0x00e0;
+							break;
+						case 0x0f:
+							chip8->I = 0x00f0;
+							break;
+						};
+					// Debug info.
+					snprintf(mnemonic, sizeof(mnemonic), "CHAR V%d", X);
+					break;
+					};
 				case 0x0033:
 					{
 					// Stores the binary-coded decimal representation of VX, 
@@ -723,8 +782,8 @@ void tick()
 					printf("panic! opcode: 0x%04x\n", opcode);
 					panic();
 			}
-		break;
-	}
+			break;
+		}	
 
 	// Update debug info
 	mvwprintw(debug_w, 4, 1, "opcode: %04x Mnemonic: %s", opcode, mnemonic);
@@ -737,9 +796,15 @@ void tick()
 void draw()
 {
 	WINDOW *game_w = windows[1];
-	for(int i; i < 32*64; i++){
-		wprintw(game_w, "%x", chip8->gfx[i]);
+	for(int i = 0; i < 32*64; i++){
+		if(chip8->gfx[i] == 1){
+			waddch(game_w, ACS_CKBOARD);
+		} else {
+			wprintw(game_w, " ");
+		}
 	}
+	//box(game_w, 0, 0);
+	wrefresh(game_w);
 }
 
 // #TODO: Send this to a helper file
@@ -834,3 +899,30 @@ void getKey()
 			break;
 	}
 }
+
+void initFonts()
+{
+	// Initializes the emulator's default fonts (0-F)
+	// located at addresses 0x0000 to 0x00F5
+	char characters[] = { 0xF0,0x90,0x90,0x90,0xF0,
+						0x20,0x60,0x20,0x20,0x70,
+						0xF0,0x10,0xF0,0x80,0xF0, 
+						0xF0,0x10,0xF0,0x10,0xF0, 
+						0x90,0x90,0xF0,0x10,0x10, 
+						0xF0,0x80,0xF0,0x10,0xF0, 
+						0xF0,0x80,0xF0,0x90,0xF0, 
+						0xF0,0x10,0x20,0x40,0x40, 
+						0xF0,0x90,0xF0,0x90,0xF0, 
+						0xF0,0x90,0xF0,0x10,0xF0, 
+						0xF0,0x90,0xF0,0x90,0x90, 
+						0xE0,0x90,0xE0,0x90,0xE0, 
+						0xF0,0x80,0x80,0x80,0xF0, 
+						0xE0,0x90,0x90,0x90,0xE0, 
+						0xF0,0x80,0xF0,0x80,0xF0, 
+						0xF0,0x80,0xF0,0x80,0x80};
+
+	for(int i = 0; i <= 0xF; i++){
+		memcpy(&chip8->memory[i << 4], &characters[i*5], 5);
+	};
+}
+
