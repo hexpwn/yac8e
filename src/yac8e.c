@@ -420,10 +420,10 @@ void tick()
 					unsigned int Y = opcode >> 4 & 0xF;
 					// Check overflow condition
 					if(chip8->V[X] < chip8->V[Y]){
-						chip8->V[0xF] = 1;
+						chip8->V[0xF] = 0;
 					}
 					else {
-						chip8->V[0xF] = 0;
+						chip8->V[0xF] = 1;
 					}
 					chip8->V[X] -= chip8->V[Y];
 					chip8->pc += 2;
@@ -452,9 +452,9 @@ void tick()
 					unsigned int X = opcode >> 8 & 0xF;
 					unsigned int Y = opcode >> 4 & 0xF;
 					if(chip8->V[X] > chip8->V[Y]){
-						chip8->V[0xF] = 1;
-					} else {
 						chip8->V[0xF] = 0;
+					} else {
+						chip8->V[0xF] = 1;
 					}
 					chip8->V[X] = chip8->V[Y] - chip8->V[X];
 					chip8->pc += 2;
@@ -683,60 +683,13 @@ void tick()
 					// in VX. Characters 0-F (in hexadecimal) are represented 
 					// by a 4x5 font. 
 					unsigned int X = opcode >> 8 & 0xF;
-					switch(chip8->V[X]){
-						case 0x00:
-							chip8->I = 0x0000;
-							break;
-						case 0x01:
-							chip8->I = 0x0010;
-							break;
-						case 0x02:
-							chip8->I = 0x0020;
-							break;
-						case 0x03:
-							chip8->I = 0x0030;
-							break;
-						case 0x04:
-							chip8->I = 0x0040;
-							break;
-						case 0x05:
-							chip8->I = 0x0050;
-							break;
-						case 0x06:
-							chip8->I = 0x0060;
-							break;
-						case 0x07:
-							chip8->I = 0x0070;
-							break;
-						case 0x08:
-							chip8->I = 0x0080;
-							break;
-						case 0x09:
-							chip8->I = 0x0090;
-							break;
-						case 0x0a:
-							chip8->I = 0x00a0;
-							break;
-						case 0x0b:
-							chip8->I = 0x00b0;
-							break;
-						case 0x0c:
-							chip8->I = 0x00c0;
-							break;
-						case 0x0d:
-							chip8->I = 0x00d0;
-							break;
-						case 0x0e:
-							chip8->I = 0x00e0;
-							break;
-						case 0x0f:
-							chip8->I = 0x00f0;
-							break;
-						};
+					chip8->I = chip8->V[X] << 4;
+					chip8->pc += 2;
+
 					// Debug info.
 					snprintf(mnemonic, sizeof(mnemonic), "CHAR V%d", X);
 					break;
-					};
+					}
 				case 0x0033:
 					{
 					// Stores the binary-coded decimal representation of VX, 
@@ -751,7 +704,13 @@ void tick()
 					chip8->memory[chip8->I]	 = (chip8->V[X] / 100) % 10;
 					chip8->memory[chip8->I+1] = (chip8->V[X] / 10) % 10;
 					chip8->memory[chip8->I+2] = chip8->V[X] % 10;
-					}
+					chip8->pc += 2;
+
+					// Debug info.
+					snprintf(mnemonic, sizeof(mnemonic), "BCD V%d", X);
+					break;
+
+					};
 				case 0x0055:
 					{
 					// #TODO
