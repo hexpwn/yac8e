@@ -8,10 +8,8 @@ WINDOW *create_newwin(int width, int height, int starty, int startx);
 void initGraphics(int DEBUG);
 void initFonts();
 struct CPU *new_cpu();
-void destroy_win(WINDOW *local_win);
-void destroyWindows();
 void createWindows();
-void tick();
+void tick(int DEBUG);
 void draw();
 void end();
 void panic();
@@ -85,22 +83,24 @@ int main(int argc, char **argv)
 	// Initialize ncurses interface 
 	initGraphics(DEBUG);
 
+	// Create windows
+	createWindows();
+
 	// Run game loop 
 	int ticks = 0;
 	while(1){
-		// Destroy windows
-		destroyWindows();
-
-		// Create windows
-		createWindows();
-		WINDOW *debug_w = windows[0]; 
-
 		// Update input
 		chip8->input = 0x00;
 		getKey();	
 
+		WINDOW *debug_w = windows[0]; 
+		if(DEBUG){
+			// Erase debug window in preparation for tick data
+			werase(debug_w);
+		}
+
 		// Run a tick
-		tick();
+		tick(DEBUG);
 		
 		// Draw game window (if necessary)
 		if(chip8->draw){
@@ -115,6 +115,7 @@ int main(int argc, char **argv)
 					"Window size: %d x %d - ROM Filename: %s", 
 					COLS, LINES, filename);
 			mvwprintw(debug_w, 3, 1, "Ticks: %d", ticks);
+			box(debug_w, 0, 0);
 			wrefresh(debug_w);
 		}
 	}
@@ -127,16 +128,7 @@ WINDOW *create_newwin(int width, int height, int starty, int startx)
 {
 	WINDOW *local_win;
 	local_win = newwin(height, width, starty, startx);
-	//box(local_win, 0, 0);
 	return local_win;
-}
-
-// Destroys a window, deleting it's border
-void destroy_win(WINDOW *local_win)
-{
-	wborder(local_win, ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ');
-	wrefresh(local_win);
-	delwin(local_win);
 }
 
 // Updates graphical interface
@@ -154,8 +146,6 @@ void createWindows()
 	g_height 	= 32;
 	g_width 	= 64;
 
-	windows = malloc(sizeof(WINDOW)*2);
-
 	// Create the debug info window
 	windows[0] = create_newwin(d_width, d_height, 0, 0);
 
@@ -163,15 +153,6 @@ void createWindows()
 	startx = (COLS - g_width) / 2;
 	starty = d_height + 1;
 	windows[1] = create_newwin(g_width, g_height, starty, startx);
-}
-
-void destroyWindows()
-{
-	if(windows != NULL){
-		for(int i = 0; i < 2; i++){
-			destroy_win(windows[i]);
-		}
-	}
 }
 
 // Initializes ncurses
@@ -185,6 +166,7 @@ void initGraphics(int DEBUG)
 		nodelay(stdscr, TRUE);  // Non-blocking getch
 	}
 	curs_set(0); 			// Set cursor invisible
+	windows = malloc(sizeof(WINDOW)*2); // Allocate Windows memory
 }
 
 struct CPU *new_cpu()
@@ -194,7 +176,7 @@ struct CPU *new_cpu()
 	return cpu;
 }
 
-void tick()
+void tick(int DEBUG)
 {
 	WINDOW *debug_w = windows[0];
 	unsigned short opcode;
@@ -701,8 +683,8 @@ void tick()
 					// I+1, and the ones digit at location I+2.)
 					// #TODO
 					unsigned int X = opcode >> 8 & 0x0F00;
-					chip8->memory[chip8->I]	 = (chip8->V[X] / 100) % 10;
-					chip8->memory[chip8->I+1] = (chip8->V[X] / 10) % 10;
+					chip8->memory[chip8->I]	 = chip8->V[X] / 100;
+					chip8->memory[chip8->I+1] = (chip8->V[X] % 100) / 10;
 					chip8->memory[chip8->I+2] = chip8->V[X] % 10;
 					chip8->pc += 2;
 
@@ -753,17 +735,20 @@ void tick()
 			break;
 		}	
 
-	// Update debug info
-	mvwprintw(debug_w, 4, 1, "opcode: %04x Mnemonic: %s", opcode, mnemonic);
-	mvwprintw(debug_w, 5, 1, "PC+2: %04x I: 0x%04x V0: 0x%02x V1: 0x%02x\
- V2: 0x%02x - Stack[%04x %04x %04x] - Input: %02x", chip8->pc, chip8->I,\
- chip8->V[0], chip8->V[1], chip8->V[2], chip8->stack[0], chip8->stack[1], chip8->stack[2],\
- chip8->input);
+	if(DEBUG){
+		// Update debug info
+		mvwprintw(debug_w, 4, 1, "opcode: %04x Mnemonic: %s", opcode, mnemonic);
+		mvwprintw(debug_w, 5, 1, "PC+2: %04x I: 0x%04x V0: 0x%02x V1: 0x%02x\
+	 V2: 0x%02x - Stack[%04x %04x %04x] - Input: %02x", chip8->pc, chip8->I,\
+	 chip8->V[0], chip8->V[1], chip8->V[2], chip8->stack[0], chip8->stack[1], chip8->stack[2],\
+	 chip8->input);
+	}
 }
 
 void draw()
 {
 	WINDOW *game_w = windows[1];
+	werase(game_w);
 	for(int i = 0; i < 32*64; i++){
 		if(chip8->gfx[i] == 1){
 			waddch(game_w, ACS_CKBOARD);
