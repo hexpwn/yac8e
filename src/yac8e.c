@@ -782,9 +782,17 @@ void draw()
 	werase(game_w);
 	for(int i = 0; i < 32*64; i++){
 		if(chip8->gfx[i] == 1){
-			waddch(game_w, ACS_CKBOARD);
+			if(chip8->sound_timer > 0){
+				wprintw(game_w, " ");
+			} else {
+				waddch(game_w, ACS_CKBOARD);
+			}
 		} else {
-			wprintw(game_w, " ");
+			if(chip8->sound_timer > 0){
+				waddch(game_w, ACS_CKBOARD);
+			} else {
+				wprintw(game_w, " ");
+			}
 		}
 	}
 	//box(game_w, 0, 0);
