@@ -1,3 +1,9 @@
+// TODOS
+// - Decouple timers from the clock rate
+// - Create multithreaded input reader (ncurses not working properly)
+// - (OPTIONAL) Reset command
+// - (OPTIONAL) Control refresh rate via command
+//
 #include <ncurses.h>
 #include <stdlib.h>
 #include <string.h>
