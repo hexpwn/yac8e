@@ -751,8 +751,8 @@ void tick(int DEBUG)
 		mvwprintw(debug_w, 4, 1, "opcode: %04x Mnemonic: %s", opcode, mnemonic);
 		mvwprintw(debug_w, 5, 1, "PC+2: %04x I: 0x%04x V0: 0x%02x V1: 0x%02x\
 	 V2: 0x%02x - Stack[%04x %04x %04x] - Input: %02x", chip8->pc, chip8->I,\
-	 chip8->V[0], chip8->V[1], chip8->V[2], chip8->stack[0], chip8->stack[1], chip8->stack[2],\
-	 chip8->input);
+	 chip8->V[0], chip8->V[1], chip8->V[2], chip8->stack[0], chip8->stack[1],\ 
+	 chip8->stack[2], chip8->input);
 	}
 
 	// Decrement timers
@@ -825,6 +825,7 @@ void panic()
 	end();
 }
 
+// #TODO: use threading and not ncurses to handle inputs
 void getKey()
 {
 	switch(getch()){
