@@ -30,7 +30,7 @@ struct CPU {
 	unsigned char input;	// keyboard inputs
 	unsigned short I;			// index registers
 	unsigned short pc;			// program counter
-	unsigned int sp;			// stack pointer
+	int sp;						// stack pointer
 	bool draw;					// draw flag
 };
 
@@ -173,6 +173,16 @@ struct CPU *new_cpu()
 {
 	struct CPU *cpu = malloc(sizeof(struct CPU));
 	assert(cpu != NULL);
+	// Zero registers
+	cpu->sp = -1;
+	cpu->pc = 0x0;
+	cpu->I 	= 0x0;
+	// Zero memory
+	memset(&cpu->memory, 0x0, 4096);
+	memset(&cpu->V, 0x0, 16);
+	memset(&cpu->stack, 0x0, 16*sizeof(short));
+	memset(&cpu->gfx, 0x0, 64*32*sizeof(short));
+	
 	return cpu;
 }
 
@@ -682,7 +692,7 @@ void tick(int DEBUG)
 					// in memory at location in I, the tens digit at location 
 					// I+1, and the ones digit at location I+2.)
 					// #TODO
-					unsigned int X = opcode >> 8 & 0x0F00;
+					unsigned int X = opcode >> 8 & 0x0F;
 					chip8->memory[chip8->I]	 = chip8->V[X] / 100;
 					chip8->memory[chip8->I+1] = (chip8->V[X] % 100) / 10;
 					chip8->memory[chip8->I+2] = chip8->V[X] % 10;
@@ -698,7 +708,7 @@ void tick(int DEBUG)
 					// Stores V0 to VX (including VX) in memory starting at 
 					// address I. The offset from I is increased by 1 for each 
 					// value written, but I itself is left unmodified.
-					unsigned int X = opcode >> 8 & 0x0F00;
+					unsigned int X = opcode >> 8 & 0x0F;
 					for(int i = 0; i <= X; i++){
 						chip8->memory[chip8->I + i] = chip8->V[i];
 					}
@@ -716,7 +726,7 @@ void tick(int DEBUG)
 					// 1 for each value written, but I itself is left 
 					// unmodified.
 					unsigned int X = opcode >> 8 & 0xF;
-					for(int i = 0; i < X; i++){
+					for(int i = 0; i <= X; i++){
 						chip8->V[i] = chip8->memory[chip8->I + i];
 					}
 
@@ -763,11 +773,11 @@ void draw()
 // #TODO: Send this to a helper file
 bool push_stack(unsigned short value, struct CPU *cpu)
 {
-	if(cpu->sp >= sizeof(cpu->stack) - 1){
+	if(cpu->sp >= 0xFF){
 		return false;
 	}
-	cpu->stack[cpu->sp] = value;
 	cpu->sp++;
+	cpu->stack[cpu->sp] = value;
 	return true;
 }
 
