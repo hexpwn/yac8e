@@ -3,6 +3,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <assert.h>
+#include <time.h>
 
 WINDOW *create_newwin(int width, int height, int starty, int startx);
 void initGraphics(int DEBUG);
@@ -23,15 +24,17 @@ WINDOW **windows;
 
 // A struct representing the CPU. Will be separated later
 struct CPU {
-	unsigned char memory[4096];	// memory
-	unsigned char V[16];		// registers
-	unsigned short stack[16];	// call stack
+	unsigned char memory[4096];		// memory
+	unsigned char V[16];			// registers
+	unsigned short stack[16];		// call stack
 	unsigned short gfx[64 * 32];	// frame buffer (64x32 pixels)
-	unsigned char input;	// keyboard inputs
-	unsigned short I;			// index registers
-	unsigned short pc;			// program counter
-	int sp;						// stack pointer
-	bool draw;					// draw flag
+	unsigned char input;			// keyboard inputs
+	unsigned short I;				// index registers
+	unsigned short pc;				// program counter
+	unsigned int delay_timer;		// delay timer
+	unsigned int sound_timer;		// sound timer
+	int sp;							// stack pointer
+	bool draw;						// draw flag
 };
 
 int main(int argc, char **argv)
@@ -118,6 +121,7 @@ int main(int argc, char **argv)
 			box(debug_w, 0, 0);
 			wrefresh(debug_w);
 		}
+
 	}
 	
 	// Destroy graphic interface
@@ -182,12 +186,18 @@ struct CPU *new_cpu()
 	memset(&cpu->V, 0x0, 16);
 	memset(&cpu->stack, 0x0, 16*sizeof(short));
 	memset(&cpu->gfx, 0x0, 64*32*sizeof(short));
+	// Zero timers
+	cpu->delay_timer = 0;
+	cpu->sound_timer = 0;
 	
 	return cpu;
 }
 
 void tick(int DEBUG)
 {
+	// Used for tick timer
+	clock_t start = clock(), diff;
+
 	WINDOW *debug_w = windows[0];
 	unsigned short opcode;
 
@@ -603,13 +613,10 @@ void tick(int DEBUG)
 			switch(opcode & 0x00FF){
 				case 0x0007:
 					{
-					// #TODO: finish implementing
 					// Sets VX to the value of the delay timer. 
 					unsigned int X = opcode >> 8 & 0xF;
-					// #TODO
-					printf("opcode: 0x%04x", opcode);
-					endwin();
-					exit(-1);
+					chip8->V[X] = chip8->delay_timer;
+					chip8->pc += 2;
 
 					// Debug info.
 					snprintf(mnemonic, sizeof(mnemonic), "TIME V%d, delay", X);
@@ -633,12 +640,10 @@ void tick(int DEBUG)
 					}
 				case 0x0015:
 					{
-					printf("opcode: 0x%04x", opcode);
-					endwin();
-					exit(-1);
-					// #TODO: finish implementing
 					// Sets the delay timer to VX.. 
 					unsigned int X = opcode >> 8 & 0xF;
+					chip8->delay_timer = chip8->V[X];
+					chip8->pc += 2;
 
 					// Debug info.
 					snprintf(mnemonic, sizeof(mnemonic), "TIME delay, V%d", X);
@@ -646,13 +651,10 @@ void tick(int DEBUG)
 					}
 				case 0x0018:
 					{
-					// #TODO: finish implementing
 					// Sets the sound timer to VX.  
 					unsigned int X = opcode >> 8 & 0xF;
-					// #TODO
-					printf("opcode: 0x%04x", opcode);
-					endwin();
-					exit(-1);
+					chip8->sound_timer = chip8->V[X];
+					chip8->pc += 2;
 
 					// Debug info.
 					snprintf(mnemonic, sizeof(mnemonic), "SNDT V%d", X);
@@ -691,7 +693,6 @@ void tick(int DEBUG)
 					// decimal representation of VX, place the hundreds digit 
 					// in memory at location in I, the tens digit at location 
 					// I+1, and the ones digit at location I+2.)
-					// #TODO
 					unsigned int X = opcode >> 8 & 0x0F;
 					chip8->memory[chip8->I]	 = chip8->V[X] / 100;
 					chip8->memory[chip8->I+1] = (chip8->V[X] % 100) / 10;
@@ -753,6 +754,26 @@ void tick(int DEBUG)
 	 chip8->V[0], chip8->V[1], chip8->V[2], chip8->stack[0], chip8->stack[1], chip8->stack[2],\
 	 chip8->input);
 	}
+
+	// Decrement timers
+	if(chip8->delay_timer > 0){ 
+		chip8->delay_timer--;
+	}
+	if(chip8->sound_timer > 0) {
+		chip8->sound_timer--;
+		mvwprintw(debug_w, 2, 1, "BEEP!");
+	}
+
+	// Each tick should take (at least) 1/60s
+	// 16ms per tick seemed too slow... decreased it to 1.6ms
+	bool tick_end = false;
+	while(tick_end == false){
+		diff = clock() - start;
+		float msec = diff * 1000 / CLOCKS_PER_SEC;
+		if(msec >= 1.67) tick_end = true;
+	}	
+
+
 }
 
 void draw()
