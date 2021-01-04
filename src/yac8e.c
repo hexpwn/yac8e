@@ -538,7 +538,6 @@ void tick(int DEBUG)
 			}
 		case 0xd000:
 			{
-			// #TODO: finish implementing
 			// Draws a sprite at coordinate (VX, VY) that has a width of 8 
 			// pixels and a height of N+1 pixels. Each row of 8 pixels is read 
 			// as bit-coded starting from memory location I; I value doesn’t 
@@ -578,10 +577,11 @@ void tick(int DEBUG)
 					// pressed. (Usually the next instruction is a jump to skip
 					// a code block) 
 					unsigned int X = opcode >> 8 & 0xF;
-					// #TODO
-					printf("opcode: 0x%04x", opcode);
-					endwin();
-					exit(-1);
+					if(chip8->V[X] == chip8->input){
+						chip8->pc += 4;
+					} else {
+						chip8->pc += 2;
+					}
 
 					// Debug info.
 					snprintf(mnemonic, sizeof(mnemonic), "SKEP V%d", X);
@@ -791,7 +791,6 @@ void draw()
 	wrefresh(game_w);
 }
 
-// #TODO: Send this to a helper file
 bool push_stack(unsigned short value, struct CPU *cpu)
 {
 	if(cpu->sp >= 0xFF){
