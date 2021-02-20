@@ -1,11 +1,15 @@
+CC=gcc
 LDFLAGS=-lncurses
 FLAGS=-g -Wall
+BIN=bin/yac8e
 
-all: 
-	gcc src/yac8e.c -o bin/yac8e ${LDFLAGS} ${FLAGS}
+all: yac8e
 
-test:
-	gcc src/test.c -o bin/test ${LDFLAGS} ${FLAGS}
+yac8e: src/yac8e.c
+	$(CC) -o $(BIN) $^ $(LDFLAGS) $(FLAGS)
+
+test: src/test.c
+	$(CC) -o bin/test $^ $(LDFLAGS) $(FLAGS)
 
 clean: 
 	rm -rf bin/*
