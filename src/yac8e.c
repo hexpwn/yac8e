@@ -37,8 +37,8 @@ struct CPU {
 	unsigned char input;			// keyboard inputs
 	unsigned short I;				// index registers
 	unsigned short pc;				// program counter
-	unsigned int delay_timer;		// delay timer
-	unsigned int sound_timer;		// sound timer
+	unsigned char delay_timer;		// delay timer
+	unsigned char sound_timer;		// sound timer
 	int sp;							// stack pointer
 	bool draw;						// draw flag
 };
