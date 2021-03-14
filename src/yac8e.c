@@ -11,25 +11,8 @@
 #include <assert.h>
 #include <time.h>
 
-WINDOW *create_newwin(int width, int height, int starty, int startx);
-void initGraphics(int DEBUG);
-void initFonts();
-struct CPU *new_cpu();
-void createWindows();
-void tick(int DEBUG);
-void draw();
-void end();
-void panic();
-void getKey();
-bool push_stack(unsigned short value, struct CPU *cpu);
-unsigned short pop_stack(struct CPU *cpu);
-
-// Can I escape globals?
-struct CPU *chip8;
-WINDOW **windows;
-
 // A struct representing the CPU. Will be separated later
-struct CPU {
+typedef struct { 
 	unsigned char memory[4096];		// memory
 	unsigned char V[16];			// registers
 	unsigned short stack[16];		// call stack
@@ -41,7 +24,26 @@ struct CPU {
 	unsigned char sound_timer;		// sound timer
 	int sp;							// stack pointer
 	bool draw;						// draw flag
-};
+} CPU;
+
+WINDOW *create_newwin(int width, int height, int starty, int startx);
+void initGraphics(int DEBUG);
+void initFonts();
+CPU *new_cpu();
+void createWindows();
+void tick(int DEBUG);
+void draw();
+void end();
+void panic();
+void *updateKeys(void *cpu);
+bool push_stack(unsigned short value, CPU *cpu);
+unsigned short pop_stack(CPU *cpu);
+
+
+
+// Can I escape globals?
+CPU *chip8;
+WINDOW **windows;
 
 int main(int argc, char **argv)
 {
@@ -179,9 +181,9 @@ void initGraphics(int DEBUG)
 	windows = malloc(sizeof(WINDOW)*2); // Allocate Windows memory
 }
 
-struct CPU *new_cpu()
+CPU *new_cpu()
 {
-	struct CPU *cpu = malloc(sizeof(struct CPU));
+	CPU *cpu = malloc(sizeof(CPU));
 	assert(cpu != NULL);
 	// Zero registers
 	cpu->sp = -1;
@@ -805,7 +807,7 @@ void draw()
 	wrefresh(game_w);
 }
 
-bool push_stack(unsigned short value, struct CPU *cpu)
+bool push_stack(unsigned short value, CPU *cpu)
 {
 	if(cpu->sp >= 0xFF){
 		return false;
@@ -815,7 +817,7 @@ bool push_stack(unsigned short value, struct CPU *cpu)
 	return true;
 }
 
-unsigned short pop_stack(struct CPU *cpu)
+unsigned short pop_stack(CPU *cpu)
 {
 	if(cpu->sp == -1){
 		return 0xffff;
