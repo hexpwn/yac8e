@@ -1,6 +1,6 @@
 // TODOS
 // - Decouple timers from the clock rate
-// - Create multithreaded input reader (ncurses not working properly)
+// - Fix multithreading so that multiple keys don't block each other 
 // - (OPTIONAL) Reset command
 // - (OPTIONAL) Control refresh rate via command
 //
@@ -187,6 +187,7 @@ void initGraphics(int DEBUG)
 	windows = malloc(sizeof(WINDOW)*2); // Allocate Windows memory
 }
 
+// Creates a new CPU structure
 CPU *new_cpu()
 {
 	CPU *cpu = malloc(sizeof(CPU));
