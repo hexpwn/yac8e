@@ -178,11 +178,8 @@ void createWindows()
 void initGraphics(int DEBUG)
 {
 	initscr();
-	//cbreak(); 				// Line buffering disabled
 	keypad(stdscr, TRUE);   // Enable Function keys (ex: F1)
 	noecho(); 				// Do not display the users keypresses
-	//nodelay(stdscr, TRUE);  // Non-blocking getch
-	halfdelay(1);
 	curs_set(0); 			// Set cursor invisible
 	windows = malloc(sizeof(WINDOW)*2); // Allocate Windows memory
 }
@@ -794,7 +791,7 @@ void tick(int DEBUG)
 	while(tick_end == false){
 		diff = clock() - start;
 		float msec = diff * 1000 / CLOCKS_PER_SEC;
-		if(msec >= 1.67) tick_end = true;
+		if(msec >= 5) tick_end = true;
 	}	
 
 
@@ -863,6 +860,8 @@ void *updateKeys(void* cpu){
 	chip8 = (CPU *)cpu;
 	while(1){
 		int key = getch();
+		// this is a hack and I hate it...
+		timeout(50);
 		switch(key){
 			case KEY_F(1): // F1 pressed. Close program
 				end();
