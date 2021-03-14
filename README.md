@@ -22,13 +22,13 @@ Example:
 
 `./yac8e roms/UFO`
 
-![](/home/hexpwn/lab/chip8/YAC8E/README.assets/ufo-1615764660538.gif)
+![](ufo.gif)
 
 #### Optional debug flag
 
 `./yac8e -d <rom_file>` for debug mode.
 
-![](/home/hexpwn/lab/chip8/YAC8E/README.assets/debug.gif)
+![](debug.gif)
 
 
 
