@@ -39,3 +39,4 @@ Example:
 * Find a more elegant solution for the clock rate, possibly give the use the chance to change clock rate mid-game
 * Game selection menu
 * Reset game command
+* Try to break my own game... I'm sure there are overflows and use-after-free's everywhere ;)
