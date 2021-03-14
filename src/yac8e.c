@@ -10,6 +10,7 @@
 #include <unistd.h>
 #include <assert.h>
 #include <time.h>
+#include <pthread.h>
 
 // A struct representing the CPU. Will be separated later
 typedef struct { 
@@ -17,13 +18,14 @@ typedef struct {
 	unsigned char V[16];			// registers
 	unsigned short stack[16];		// call stack
 	unsigned short gfx[64 * 32];	// frame buffer (64x32 pixels)
-	unsigned char input;			// keyboard inputs
+	unsigned char input[16];		// keyboard inputs
 	unsigned short I;				// index registers
 	unsigned short pc;				// program counter
 	unsigned char delay_timer;		// delay timer
 	unsigned char sound_timer;		// sound timer
 	int sp;							// stack pointer
 	bool draw;						// draw flag
+	bool key_is_pressed;			// self explanatory
 } CPU;
 
 WINDOW *create_newwin(int width, int height, int starty, int startx);
@@ -99,11 +101,16 @@ int main(int argc, char **argv)
 
 	// Run game loop 
 	int ticks = 0;
-	while(1){
-		// Update input
-		chip8->input = 0x00;
-		getKey();	
 
+	// Create the keyboard listening thread
+	pthread_t keythread;
+	int pt = pthread_create(&keythread, NULL, updateKeys, (void *)chip8);
+	if(pt) {
+		perror("Failed creating keyboard thread\n");
+		exit(-1);
+	}
+
+	while(1){
 		WINDOW *debug_w = windows[0]; 
 		if(DEBUG){
 			// Erase debug window in preparation for tick data
@@ -171,12 +178,11 @@ void createWindows()
 void initGraphics(int DEBUG)
 {
 	initscr();
-	cbreak(); 				// Line buffering disabled
+	//cbreak(); 				// Line buffering disabled
 	keypad(stdscr, TRUE);   // Enable Function keys (ex: F1)
 	noecho(); 				// Do not display the users keypresses
-	if(!DEBUG){
-		nodelay(stdscr, TRUE);  // Non-blocking getch
-	}
+	//nodelay(stdscr, TRUE);  // Non-blocking getch
+	halfdelay(1);
 	curs_set(0); 			// Set cursor invisible
 	windows = malloc(sizeof(WINDOW)*2); // Allocate Windows memory
 }
@@ -585,14 +591,14 @@ void tick(int DEBUG)
 					// pressed. (Usually the next instruction is a jump to skip
 					// a code block) 
 					unsigned int X = opcode >> 8 & 0xF;
-					if(chip8->V[X] == chip8->input){
+					if(chip8->input[chip8->V[X]] != 0x0){
 						chip8->pc += 4;
 					} else {
 						chip8->pc += 2;
 					}
 
 					// Debug info.
-					snprintf(mnemonic, sizeof(mnemonic), "SKEP V%d", X);
+					snprintf(mnemonic, sizeof(mnemonic), "SKP V%d", X);
 					break;
 					}
 				case 0xA1:
@@ -601,7 +607,7 @@ void tick(int DEBUG)
 					// pressed. (Usually the next instruction is a jump to skip
 					// a code block) 
 					unsigned int X = opcode >> 8 & 0xF;
-					if(chip8->V[X] != chip8->input){
+					if(chip8->input[chip8->V[X]] == 0x0){
 						chip8->pc += 4;
 					} else {
 						chip8->pc += 2;
@@ -636,14 +642,17 @@ void tick(int DEBUG)
 					// (Blocking Operation. All instruction halted until 
 					// next key event)  
 					unsigned int X = opcode >> 8 & 0xF;
-					while(chip8->input == 0x00){
-						getKey();
+					while(chip8->key_is_pressed == false){
 					}
-					chip8->V[X] = chip8->input;
+					for(int k = 0; k < 16; k++){
+						if(chip8->input[k] != 0x0){
+							chip8->V[X] = k;
+						}
+					}
 					chip8->pc+= 2;
 					
 					// Debug info.
-					snprintf(mnemonic, sizeof(mnemonic), "GKEY V%d", X);
+					snprintf(mnemonic, sizeof(mnemonic), "LD V%d, K", X);
 					break;
 					}
 				case 0x0015:
@@ -758,9 +767,15 @@ void tick(int DEBUG)
 		// Update debug info
 		mvwprintw(debug_w, 4, 1, "opcode: %04x Mnemonic: %s", opcode, mnemonic);
 		mvwprintw(debug_w, 5, 1, "PC+2: %04x I: 0x%04x V0: 0x%02x V1: 0x%02x\
-	 V2: 0x%02x - Stack[%04x %04x %04x] - Input: %02x", chip8->pc, chip8->I,\
+	 V2: 0x%02x - Stack[%04x %04x %04x] - Inputs: 0:%d 1:%d 2:%d 3:%d 4:%d 5:%d\
+ 6:%d 7:%d 8:%d 9:%d A:%d B:%d C:%d D:%d E:%d F:%d - Key pressed: %d\n", \
+	chip8->pc, chip8->I,\
 	 chip8->V[0], chip8->V[1], chip8->V[2], chip8->stack[0], chip8->stack[1],\
-	 chip8->stack[2], chip8->input);
+	 chip8->stack[2], chip8->input[0], chip8->input[1], chip8->input[2],\
+	 chip8->input[3], chip8->input[4], chip8->input[5], chip8->input[6],\
+	 chip8->stack[7], chip8->input[8], chip8->input[9], chip8->input[0xa],\
+	 chip8->input[0xb], chip8->input[0xc], chip8->input[0xd], chip8->input[0xe],\
+	 chip8->input[0xf], chip8->key_is_pressed);
 	}
 
 	// Decrement timers
@@ -829,9 +844,10 @@ unsigned short pop_stack(CPU *cpu)
 
 void end()
 {
+	endwin();
+	pthread_exit(NULL);
 	free(windows);
 	free(chip8);
-	endwin();
 	exit(0);
 }
 
@@ -841,62 +857,86 @@ void panic()
 	end();
 }
 
-// #TODO: use threading and not ncurses to handle inputs
-void getKey()
-{
-	switch(getch()){
-		case KEY_F(1): // Close program
-			end();
-		case 49:
-			chip8->input ^= 0x1;
-			break;
-		case 50:
-			chip8->input ^= 0x2;
-			break;
-		case 51:
-			chip8->input ^= 0x3;
-			break;
-		case 52:
-			chip8->input ^= 0xC;
-			break;
-		case 113:
-			chip8->input ^= 0x4;
-			break;
-		case 119:
-			chip8->input ^= 0x5;
-			break;
-		case 101:
-			chip8->input ^= 0x6;
-			break;
-		case 114:
-			chip8->input ^= 0xD;
-			break;
-		case 97:
-			chip8->input ^= 0x7;
-			break;
-		case 115:
-			chip8->input ^= 0x8;
-			break;
-		case 100:
-			chip8->input ^= 0x9;
-			break;
-		case 102:
-			chip8->input ^= 0xE;
-			break;
-		case 122:
-			chip8->input ^= 0xA;
-			break;
-		case 120:
-			chip8->input ^= 0x0;
-			break;
-		case 99:
-			chip8->input ^= 0xB;
-			break;
-		case 118:
-			chip8->input ^= 0xF;
-			break;
-		default:
-			break;
+void *updateKeys(void* cpu){
+	CPU *chip8;
+	chip8 = (CPU *)cpu;
+	while(1){
+		int key = getch();
+		switch(key){
+			case KEY_F(1): // F1 pressed. Close program
+				end();
+			case 49:
+				chip8->input[0x1] = 0x1;
+				chip8->key_is_pressed = true;
+				break;
+			case 50:
+				chip8->input[0x2] = 0x1;
+				chip8->key_is_pressed = true;
+				break;
+			case 51:
+				chip8->input[0x3] = 0x1;
+				chip8->key_is_pressed = true;
+				break;
+			case 52:
+				chip8->input[0xC] = 0x1;
+				chip8->key_is_pressed = true;
+				break;
+			case 113:
+				chip8->input[0x4] = 0x1;
+				chip8->key_is_pressed = true;
+				break;
+			case 119:
+				chip8->input[0x5] = 0x1;
+				chip8->key_is_pressed = true;
+				break;
+			case 101:
+				chip8->input[0x6] = 0x1;
+				chip8->key_is_pressed = true;
+				break;
+			case 114:
+				chip8->input[0xD] = 0x1;
+				chip8->key_is_pressed = true;
+				break;
+			case 97:
+				chip8->input[0x7] = 0x1;
+				chip8->key_is_pressed = true;
+				break;
+			case 115:
+				chip8->input[0x8] = 0x1;
+				chip8->key_is_pressed = true;
+				break;
+			case 100:
+				chip8->input[0x9] = 0x1;
+				chip8->key_is_pressed = true;
+				break;
+			case 102:
+				chip8->input[0xE] = 0x1;
+				chip8->key_is_pressed = true;
+				break;
+			case 122:
+				chip8->input[0xA] = 0x1;
+				chip8->key_is_pressed = true;
+				break;
+			case 120:
+				chip8->input[0x0] = 0x1;
+				chip8->key_is_pressed = true;
+				break;
+			case 99:
+				chip8->input[0xB] = 0x1;
+				chip8->key_is_pressed = true;
+				break;
+			case 118:
+				chip8->input[0xF] = 0x1;
+				chip8->key_is_pressed = true;
+				break;
+			default:
+			case ERR:
+				chip8->key_is_pressed = false;
+				for(int k = 0; k < 16; k++){
+					chip8->input[k] = 0;
+				}
+				break;
+		}
 	}
 }
 
