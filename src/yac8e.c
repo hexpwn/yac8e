@@ -246,14 +246,20 @@ void tick(int DEBUG)
 					}
 				default:
 					{
+					// 0x0nnn
+					// Jump to a machine code routine at nnn.
+					// This instruction is only used on the old computers on which Chip-8 was originally implemented. It is ignored by modern interpreters.
+					unsigned short NNN = opcode & 0x0FFF;
+					chip8->pc = NNN;
+					snprintf(mnemonic, sizeof(mnemonic), "SYS 0x%03x", NNN);
+					break;
+					/*
 					// 0x0000
 					// #TODO
 					printf("pc: %04x opcode: 0x%04x", chip8->pc, opcode);
 					endwin();
 					exit(-1);
-					/*
  					unsigned short NNN = opcode & 0x0FFF;
-					snprintf(mnemonic, sizeof(mnemonic), "CALL 0x%03x", NNN);
 					break;
 					*/
 					}
@@ -858,10 +864,11 @@ void panic()
 void *updateKeys(void* cpu){
 	CPU *chip8;
 	chip8 = (CPU *)cpu;
+	int key;
 	while(1){
-		int key = getch();
 		// this is a hack and I hate it...
-		timeout(50);
+		key = getch();
+		timeout(150);
 		switch(key){
 			case KEY_F(1): // F1 pressed. Close program
 				end();
